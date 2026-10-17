@@ -1,4 +1,9 @@
-"""Mock refund records and duplicate-refund protection."""
+###  Refund records and operations
+# - Contains the Refund records and operations package code.
+# - Provides functionality to related Paylane modules.
+# - Defines this module package boundary.
+# TODO: Complete and maintain the Refund records and operations functionality.
+
 
 from threading import Lock
 from uuid import uuid4

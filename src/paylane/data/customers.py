@@ -1,8 +1,14 @@
-###   Mock customer records and customer lookup
+###  Mock customer records
+# - Contains the Mock customer records package code.
+# - Provides functionality to related Paylane modules.
+# - Defines this module package boundary.
+# TODO:
 
 
+# deepcopy send data copy
 from copy import deepcopy
 
+# dictionary of mock customer records
 CUSTOMERS: dict[str, dict] = {
     "cust_001": {
         "id": "cust_001",
@@ -31,7 +37,9 @@ CUSTOMERS: dict[str, dict] = {
 }
 
 
+# get_customer_by_id
 def get_customer(email: str) -> dict | None:
+    # remove spacees to compere
     normalized_email = email.strip().casefold()
 
     for customer in CUSTOMERS.values():
@@ -41,7 +49,7 @@ def get_customer(email: str) -> dict | None:
     return None
 
 
+# get_customer_by_id
 def get_customer_by_id(customer_id: str) -> dict | None:
-    """Return a copy of a customer record by ID."""
     customer = CUSTOMERS.get(customer_id)
     return deepcopy(customer) if customer else None

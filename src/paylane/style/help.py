@@ -1,8 +1,14 @@
-### Help screen for the Paylane AI Support Agent CLI.
+###  implementation agent
+# Command help display
+# - Lists available terminal commands.
+# - Explains basic conversation usage.
+# - Notes verification and escalation limits.
+# TODO: Keep help text aligned with available CLI commands.
 
 from __future__ import annotations
 
 from paylane.style.colors import BOLD, CYAN, RESET
+
 
 def print_help() -> None:
     """Display available commands and usage instructions."""

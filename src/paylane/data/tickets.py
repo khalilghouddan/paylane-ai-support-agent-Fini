@@ -1,4 +1,5 @@
-"""Mock human-escalation ticket records."""
+###  Mock human-escalation ticket records.
+
 
 from threading import Lock
 from uuid import uuid4
@@ -10,8 +11,8 @@ _TICKET_LOCK = Lock()
 def escalate_to_human(
     customer_id: str | None,
     summary: str,
+    priority: str = "normal",
 ) -> dict:
-    """Create a mock support ticket without exposing sensitive details."""
     if not summary.strip():
         raise ValueError("Ticket summary cannot be empty.")
 
@@ -23,19 +24,17 @@ def escalate_to_human(
             "customer_id": customer_id,
             "summary": summary.strip(),
             "status": "open",
-            "priority": "normal",
+            "priority": priority,
         }
 
-        return {"ticket_id": ticket_id}
+        return {"ticket_id": ticket_id, "priority": priority}
 
 
 def get_ticket(ticket_id: str) -> dict | None:
-    """Return a copy of a ticket if it exists."""
     ticket = TICKETS.get(ticket_id)
     return ticket.copy() if ticket else None
 
 
 def reset_tickets() -> None:
-    """Clear mock tickets between isolated tests."""
     with _TICKET_LOCK:
         TICKETS.clear()

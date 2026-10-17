@@ -1,27 +1,23 @@
-###Command-line interface for the Paylane AI support agent.
-
-
-#Provides an interactive terminal interface for the Paylane AI Support Agent.
-#It accepts customer messages, sends them to SupportAgent, displays responses,and handles session termination and errors.
-
-#TODO: Implement the main function to run the command-line interface.
-#TODO: 
-
+### Command line interface
+# - Runs the interactive customer support session.
+# - Displays messages and command help.
+# - Handles exit and runtime errors.
+# TODO: Complete interactive CLI behavior and error handling.
 
 
 # Allows type annotations to be evaluated later.
 from __future__ import annotations
+
 # loggs module logging.warning(",logging.error("A
 import logging
 
-
-from paylane.agent import SupportAgent
 from paylane import style
-
+from paylane.agent import SupportAgent
 
 logger = logging.getLogger(__name__)
 
-#Start an interactive customer-support conversation."""
+
+# Start an interactive customer-support conversation."""
 def run_chat() -> None:
 
     try:
@@ -66,12 +62,10 @@ def run_chat() -> None:
 
         except Exception:
             logger.exception("An error occurred while processing the message.")
-            style.print_error(
-                "Sorry, something went wrong. Please try again."
-            )
+            style.print_error("Sorry, something went wrong. Please try again.")
 
 
-#Application entry point.
+# Application entry point.
 def main() -> None:
 
     logging.basicConfig(

@@ -1,9 +1,14 @@
-"""Mock transaction records and transaction lookup."""
+###  Mock transaction records
+# - Contains the Mock transaction records package code.
+# - Provides functionality to related Paylane modules.
+# -
+# TODO:
+
 
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-TEST_NOW = datetime(2026, 10, 16, 12, 0, tzinfo=timezone.utc)
+TEST_NOW = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
 
 TRANSACTIONS: dict[str, dict] = {
     "txn_001": {
@@ -66,19 +71,14 @@ TRANSACTIONS: dict[str, dict] = {
 
 
 def get_transaction(customer_id: str, txn_id: str) -> dict | None:
-    """Return a transaction only if it belongs to the requested customer."""
     transaction = TRANSACTIONS.get(txn_id)
-
     if transaction is None:
         return None
-
     if transaction["customer_id"] != customer_id:
         return None
-
     return deepcopy(transaction)
 
 
 def get_transaction_by_id(txn_id: str) -> dict | None:
-    """Internal lookup for trusted application logic."""
     transaction = TRANSACTIONS.get(txn_id)
     return deepcopy(transaction) if transaction else None
