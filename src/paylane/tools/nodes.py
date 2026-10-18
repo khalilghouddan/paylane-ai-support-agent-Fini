@@ -78,18 +78,30 @@ def classify_request(state: AgentState) -> dict:
         HumanMessage(content=last_user_message),
     ])
 
+    data: dict = {}
     try:
         raw = response.content if isinstance(response.content, str) else str(response.content)
-        # Strip any accidental markdown fences the model may add
-        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        data: dict = json.loads(raw)
+        raw = raw.strip()
+        # Find JSON object boundaries in case LLM added conversational text or markdown
+        start_idx = raw.find("{")
+        end_idx = raw.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            raw = raw[start_idx : end_idx + 1]
+        else:
+            raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            data = parsed
+        else:
+            data = {"intent": "unknown"}
     except Exception:
         data = {"intent": "unknown"}
 
     updates: dict = {}
 
     # Intent — persist previous non-trivial intent if the new one is unknown
-    intent = data.get("intent", "unknown")
+    intent = (data.get("intent") or "unknown") if isinstance(data, dict) else "unknown"
     previous = state.get("intent")
     if intent == "unknown" and previous and previous not in ("unknown", "general_policy"):
         updates["intent"] = previous
@@ -98,25 +110,32 @@ def classify_request(state: AgentState) -> dict:
 
     # Entities — only write if the LLM found something
     if data.get("email"):
-        updates["supplied_email"] = data["email"]
+        updates["supplied_email"] = str(data["email"]).strip()
     if data.get("card_last4"):
-        updates["supplied_card_last4"] = str(data["card_last4"])
+        updates["supplied_card_last4"] = str(data["card_last4"]).strip()
     if data.get("txn_id"):
-        updates["transaction_id"] = str(data["txn_id"]).lower()
+        updates["transaction_id"] = str(data["txn_id"]).strip().lower()
     if data.get("amount") is not None:
-        updates["reported_loss_amount"] = float(data["amount"])
-        # High-value fraud → escalate with high priority
-        if intent == "suspected_fraud" and float(data["amount"]) > 500:
-            updates["ticket_priority"] = "high"
-            data["handoff_reason"] = (
-                f"Suspected fraud with high reported loss (${data['amount']:.2f} > $500)."
-            )
-        elif intent == "suspected_fraud":
-            updates["ticket_priority"] = "normal"
+        try:
+            amt = float(data["amount"])
+            updates["reported_loss_amount"] = amt
+            # High-value fraud → escalate with high priority
+            if intent == "suspected_fraud" and amt > 500:
+                updates["ticket_priority"] = "high"
+                data["handoff_reason"] = (
+                    f"Suspected fraud with high reported loss (${amt:.2f} > $500)."
+                )
+            elif intent == "suspected_fraud":
+                updates["ticket_priority"] = "normal"
+        except (ValueError, TypeError):
+            pass
 
     if data.get("handoff_required"):
         updates["handoff_required"] = True
-        updates["handoff_reason"] = data.get("handoff_reason")
+        updates["handoff_reason"] = (
+            data.get("handoff_reason")
+            or "Customer inquiry requires human assistance."
+        )
 
     return updates
 
@@ -271,14 +290,16 @@ def issue_refund_node(state: AgentState) -> dict:
 
 def escalate_node(state: AgentState) -> dict:
     """Create a human-support ticket."""
+    summary = state.get("handoff_reason") or "Customer inquiry requires human assistance."
+    priority = state.get("ticket_priority") or "normal"
     ticket = create_ticket(
         customer_id=state.get("customer_id"),
-        summary=state.get("handoff_reason", "Customer inquiry requires human assistance."),
-        priority=state.get("ticket_priority", "normal"),
+        summary=summary,
+        priority=priority,
     )
     return {
         "ticket_id": ticket["ticket_id"],
-        "ticket_priority": state.get("ticket_priority", "normal"),
+        "ticket_priority": priority,
         "workflow_status": "escalated",
         "actions_stopped": True,
         "handoff_required": True,
@@ -319,7 +340,7 @@ _SYSTEM_PROMPT = dedent("""\
 
 def _build_context(state: AgentState) -> str:
     parts = [
-        f"Intent: {state.get('intent', 'unknown')}",
+        f"Intent: {state.get('intent') or 'unknown'}",
         f"Customer verified: {state.get('verified', False)}",
     ]
     if state.get("verified"):

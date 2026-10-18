@@ -10,7 +10,7 @@ from paylane.data.tickets import (
 @tool
 def escalate_to_human(
     customer_id: str | None,
-    summary: str,
+    summary: str | None = None,
     priority: str = "normal",
 ) -> dict:
     """Create a human support ticket.
@@ -22,8 +22,8 @@ def escalate_to_human(
     """
     ticket = create_ticket(
         customer_id=customer_id,
-        summary=summary,
-        priority=priority,
+        summary=summary or "Customer inquiry requires human assistance.",
+        priority=priority or "normal",
     )
 
     return {

@@ -10,11 +10,12 @@ _TICKET_LOCK = Lock()
 
 def escalate_to_human(
     customer_id: str | None,
-    summary: str,
+    summary: str | None = None,
     priority: str = "normal",
 ) -> dict:
-    if not summary.strip():
-        raise ValueError("Ticket summary cannot be empty.")
+    clean_summary = (summary or "").strip()
+    if not clean_summary:
+        clean_summary = "Customer inquiry requires human assistance."
 
     with _TICKET_LOCK:
         ticket_id = f"ticket_{uuid4().hex[:12]}"
@@ -22,9 +23,9 @@ def escalate_to_human(
         TICKETS[ticket_id] = {
             "ticket_id": ticket_id,
             "customer_id": customer_id,
-            "summary": summary.strip(),
+            "summary": clean_summary,
             "status": "open",
-            "priority": priority,
+            "priority": priority or "normal",
         }
 
         return {"ticket_id": ticket_id, "priority": priority}
