@@ -67,6 +67,30 @@ TRANSACTIONS: dict[str, dict] = {
         "merchant": "Restaurant",
         "status": "settled",
     },
+    "txn_008": {
+        "id": "txn_008",
+        "customer_id": "cust_001",
+        "amount": 75.00,
+        "date": "2026-10-12T10:00:00Z",
+        "merchant": "Subscription Service",
+        "status": "settled",
+    },
+    "txn_009": {
+        "id": "txn_009",
+        "customer_id": "cust_001",
+        "amount": 100.00,
+        "date": "2026-10-12T10:00:00Z",
+        "merchant": "Appliance Outlet",
+        "status": "settled",
+    },
+    "txn_010": {
+        "id": "txn_010",
+        "customer_id": "cust_001",
+        "amount": 40.00,
+        "date": "2026-10-06T12:00:00Z",
+        "merchant": "City Bookstore",
+        "status": "settled",
+    },
 }
 
 
