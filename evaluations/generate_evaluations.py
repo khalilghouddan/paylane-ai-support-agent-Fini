@@ -155,7 +155,6 @@ def run_evaluations():
             else None
         )
 
-        passed = True
         status_text = "PASS"
 
         results.append(
