@@ -2,68 +2,7 @@
 
 An enterprise-grade, deterministic AI customer support agent for **Paylane**, a fintech application handling cards, accounts, transfers, and refunds. Built with Python and **LangGraph**, the agent combines structured conversational intelligence with deterministic policy guardrails to protect customer privacy and prevent unauthorized financial transactions.
 
----
 
-## Architecture & Workflow
-
-The agent uses a stateful **LangGraph** finite state machine. Financial eligibility and verification decisions are enforced via deterministic Python code rather than relying on unstructured LLM output.
-
-```mermaid
-flowchart TD
-    START([User Message]) --> Classify[Classify Request & Extract Entities]
-    Classify --> CheckSafety{Safety & Mandatory Escalations}
-    
-    CheckSafety -->|Actions Blocked / Stopped| ComposeResponse[Compose Response]
-    CheckSafety -->|Legal / Closure / Human Request / Fraud| Escalate[Escalate to Human Ticket]
-    CheckSafety -->|General Inquiries| AnswerGeneral[General Policy Response]
-    CheckSafety -->|Unverified Customer| Verify[Customer Lookup & 2FA Verification]
-    CheckSafety -->|Verified Customer| RouteVerified{Intent Check}
-    
-    Verify -->|3 Failed Attempts| Escalate
-    Verify -->|Needs Info| ComposeResponse
-    Verify -->|Verified & Frozen Card| Escalate
-    Verify -->|Verified & Refund Request| LookupTxn[Lookup Transaction & Check Ownership]
-    
-    RouteVerified -->|Frozen Card| Escalate
-    RouteVerified -->|Refund / Transaction Query| LookupTxn
-    RouteVerified -->|Other| ComposeResponse
-    
-    LookupTxn --> DecideRefund{Deterministic Refund Policy Gate}
-    
-    DecideRefund -->|Eligible: <= $75, < 30d, Settled| IssueRefund[Execute Refund via Mock API]
-    DecideRefund -->|Requires Review: > $75 or >= 30d| Escalate
-    DecideRefund -->|Denied: Pending / Refunded / Not Found| ComposeResponse
-    
-    IssueRefund --> ComposeResponse
-    Escalate --> ComposeResponse
-    AnswerGeneral --> ComposeResponse
-    ComposeResponse --> END([Assistant Response])
-```
-
----
-
-## 20 Core Technical Guardrails
-
-1. **Classify Customer Intent**: Categorizes inquiries (`general_policy`, `account_query`, `transaction_query`, `refund`, `frozen_card`, `suspected_fraud`, `legal_action`, `account_closure`, `human_request`).
-2. **Unauthenticated General Responses**: Answers general policy questions immediately without requiring credentials; never exposes customer data.
-3. **Customer Lookup Tool**: Retrieves mock customer records via `get_customer(email)` with normalized email matching.
-4. **Strict Two-Factor Verification**: Requires customer-supplied email **and** the last 4 card digits to match the backend record before granting account access.
-5. **Three-Attempt Retry Limit**: Tracks verification attempts in state. On the 3rd failed attempt, the session is locked down and escalated to human support.
-6. **Privacy & Data Masking**: Never reveals full PANs (only last 4) or stored email addresses. Protects transaction details until verification succeeds.
-7. **Single-Question Clarifications**: Gathers missing information (email, card digits, txn ID) incrementally—one question at a time.
-8. **Transaction Ownership Validation**: Calls `get_transaction(customer_id, txn_id)` only after verification and validates that the customer owns the transaction.
-9. **Deterministic Code Policy Checks**: Evaluates all refund criteria using Python code (`policy.py` and `guards.py`) prior to API invocation.
-10. **Refund Amount Cap ($75.00)**: Automatically approves full refunds only if the original transaction amount is **$75.00 or less**. Transactions above $75 are escalated.
-11. **Refund Age Rule (< 30 Days)**: Requires transactions to be strictly **less than 30 elapsed days old** calculated in UTC against `TEST_NOW`. Transactions 30 days or older are escalated.
-12. **Settled Status Requirement**: Only transactions with `status == "settled"` can be refunded. Pending transactions are rejected with clear explanation.
-13. **Duplicate Refund Prevention**: Rejects refund requests if the transaction is already refunded without calling `issue_refund`.
-14. **Full Refunds Only**: Disallows partial or split refunds; requests must equal the exact original settled amount.
-15. **Truthful API Result Confirmation**: Reports refunds as successful only when the API returns `ok: True` with a valid `refund_id`.
-16. **Frozen Card Safeguards**: Explains only verified card status. Never invents freeze reasons, never unfreezes cards, and escalates to human specialists.
-17. **Suspected Fraud Escalations**: Escalates all suspected unauthorized charges. Reported losses exceeding **$500.00** are flagged as high priority.
-18. **Instant Mandatory Escalations**: Legal threats, account closure requests, and explicit requests for a person trigger immediate human handoff without requiring prior verification.
-19. **Social Engineering Resistance**: Ignores adversarial prompt injections and privilege claims; strictly enforces verification and limits.
-20. **State Management & Action Halting**: Tracks workflow status and flags `actions_stopped: True` upon escalation, blocking any further consequential account operations.
 
 ---
 

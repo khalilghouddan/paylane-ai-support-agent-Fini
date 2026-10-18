@@ -6,6 +6,7 @@ for correctness and auditability.
 """
 
 import json
+import re
 from datetime import UTC, datetime
 from textwrap import dedent
 
@@ -100,21 +101,42 @@ def classify_request(state: AgentState) -> dict:
 
     updates: dict = {}
 
-    # Intent — persist previous non-trivial intent if the new one is unknown
+    email_val = data.get("email")
+    if not email_val:
+        m = re.search(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", last_user_message)
+        if m:
+            email_val = m.group(0)
+
+    card_val = data.get("card_last4")
+    if not card_val:
+        cleaned = re.sub(r"txn_\w+", "", last_user_message, flags=re.IGNORECASE)
+        m = re.search(r"\b(\d{4})\b", cleaned)
+        if m:
+            card_val = m.group(1)
+
+    txn_val = data.get("txn_id")
+    if not txn_val:
+        m = re.search(r"\b(txn_\d+)\b", last_user_message, flags=re.IGNORECASE)
+        if m:
+            txn_val = m.group(1)
+
+    # Intent — persist previous non-trivial intent if the new one is unknown or general_policy
     intent = (data.get("intent") or "unknown") if isinstance(data, dict) else "unknown"
     previous = state.get("intent")
-    if intent == "unknown" and previous and previous not in ("unknown", "general_policy"):
+    if (intent in ("unknown", "general_policy") or email_val or card_val) and previous and previous not in ("unknown", "general_policy"):
         updates["intent"] = previous
+        if email_val or card_val:
+            data["handoff_required"] = False
     else:
         updates["intent"] = intent
 
-    # Entities — only write if the LLM found something
-    if data.get("email"):
-        updates["supplied_email"] = str(data["email"]).strip()
-    if data.get("card_last4"):
-        updates["supplied_card_last4"] = str(data["card_last4"]).strip()
-    if data.get("txn_id"):
-        updates["transaction_id"] = str(data["txn_id"]).strip().lower()
+    # Entities — only write if found
+    if email_val:
+        updates["supplied_email"] = str(email_val).strip()
+    if card_val:
+        updates["supplied_card_last4"] = str(card_val).strip()
+    if txn_val:
+        updates["transaction_id"] = str(txn_val).strip().lower()
     if data.get("amount") is not None:
         try:
             amt = float(data["amount"])
